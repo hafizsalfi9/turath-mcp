@@ -1,12 +1,27 @@
 {
   "name": "turath-mcp",
   "version": "1.0.0",
-  "description": "MCP server for turath.io - access classical Arabic/Islamic books",
+  "description": "MCP server for turath.io — access thousands of classical Arabic and Islamic books via the Model Context Protocol",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "start": "tsx src/index.ts"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "turath",
+    "islamic-books",
+    "arabic-books",
+    "opencode",
+    "claude-code",
+    "classical-islam"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/opin22/turath-mcp"
+  },
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.16.0"
   },
