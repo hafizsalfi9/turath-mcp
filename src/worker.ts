@@ -239,7 +239,189 @@ function createServer() {
       }
     }
   );
+  server.registerTool(
+    "turath_research",
+    {
+      description:
+        "Research a question using Turath.io only. Searches Turath.io, selects the most relevant results, retrieves their exact pages, and returns the original Arabic text with book, author, volume, page, and source information. If Turath.io has no relevant results, explicitly reports that no information was found on Turath.io. Do not use general knowledge or external sources.",
+      inputSchema: {
+        query: z
+          .string()
+          .describe("The Arabic or English research question or topic"),
+        max_results: z
+          .number()
+          .min(1)
+          .max(5)
+          .optional()
+          .describe("Maximum number of Turath.io sources to retrieve"),
+      },
+    },
+    async ({ query, max_results = 3 }) => {
+      if (!query.trim()) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Error: research query is required.",
+            },
+          ],
+          isError: true,
+        };
+      }
 
+      try {
+        // Step 1: Search Turath.io
+        const searchResult = await api.searchBooks(query);
+
+        const results = Array.isArray(searchResult?.data)
+          ? searchResult.data
+          : [];
+
+        if (results.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  "Turath.io میں اس سوال یا موضوع کے متعلق کوئی مناسب نتیجہ نہیں ملا۔ " +
+                  "اس تحقیق کے لیے عمومی معلومات یا بیرونی ذرائع استعمال نہیں کیے گئے۔",
+              },
+            ],
+          };
+        }
+
+        // Step 2: Parse search metadata
+        const parsedResults = results
+          .map((item: any) => {
+            let meta: any = {};
+
+            try {
+              meta =
+                typeof item.meta === "string"
+                  ? JSON.parse(item.meta)
+                  : item.meta || {};
+            } catch {
+              meta = {};
+            }
+
+            return {
+              book_id: item.book_id,
+              author_id: item.author_id,
+              page_id: meta.page_id,
+              page: meta.page,
+              vol: meta.vol,
+              book_name: meta.book_name,
+              author_name: meta.author_name,
+              headings: meta.headings || [],
+              matched_text: item.text || item.snip || "",
+            };
+          })
+          .filter(
+            (item: any) =>
+              item.book_id &&
+              item.page &&
+              item.book_name &&
+              item.author_name
+          );
+
+        // Remove duplicate book/page combinations
+        const uniqueResults: any[] = [];
+        const seen = new Set<string>();
+
+        for (const item of parsedResults) {
+          const key = `${item.book_id}:${item.page}`;
+
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniqueResults.push(item);
+          }
+
+          if (uniqueResults.length >= max_results) {
+            break;
+          }
+        }
+
+        // Step 3: Retrieve exact pages from Turath.io
+        const sources: any[] = [];
+
+        for (const item of uniqueResults) {
+          try {
+            const pageResult = await api.getPage(
+              item.book_id,
+              item.page
+            );
+
+            sources.push({
+              book_id: item.book_id,
+              author_id: item.author_id,
+              book: item.book_name,
+              author: item.author_name,
+              volume: item.vol,
+              page: item.page,
+              page_id: item.page_id,
+              headings: item.headings,
+              search_match: item.matched_text,
+              exact_page: pageResult,
+              citation: `${item.book_name}، ${item.author_name}، ج ${item.vol}، ص ${item.page}`,
+            });
+          } catch (pageError) {
+            sources.push({
+              book_id: item.book_id,
+              author_id: item.author_id,
+              book: item.book_name,
+              author: item.author_name,
+              volume: item.vol,
+              page: item.page,
+              page_id: item.page_id,
+              headings: item.headings,
+              search_match: item.matched_text,
+              page_error:
+                pageError instanceof Error
+                  ? pageError.message
+                  : String(pageError),
+              citation: `${item.book_name}، ${item.author_name}، ج ${item.vol}، ص ${item.page}`,
+            });
+          }
+        }
+
+        // Step 4: Return only Turath.io material
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  source: "Turath.io only",
+                  query,
+                  found: true,
+                  total_search_results:
+                    searchResult.count ?? results.length,
+                  returned_sources: sources.length,
+                  sources,
+                  research_instruction:
+                    "Use only the information contained in these Turath.io sources. Do not supplement the answer with general knowledge or external sources.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Turath.io research error: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
   return server;
 }
 
