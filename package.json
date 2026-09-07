@@ -1,11 +1,13 @@
 {
   "name": "turath-mcp",
   "version": "1.0.0",
-  "description": "MCP server for turath.io — access thousands of classical Arabic and Islamic books via the Model Context Protocol",
+  "description": "Remote MCP server for turath.io — access classical Arabic and Islamic books via the Model Context Protocol",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "src/worker.ts",
   "scripts": {
-    "start": "tsx src/index.ts"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "start": "wrangler dev"
   },
   "keywords": [
     "mcp",
@@ -13,21 +15,21 @@
     "turath",
     "islamic-books",
     "arabic-books",
-    "opencode",
-    "claude-code",
-    "classical-islam"
+    "cloudflare-workers"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/opin22/turath-mcp"
+    "url": "https://github.com/hafizsalfi9/turath-mcp.git"
   },
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.16.0"
+    "@modelcontextprotocol/sdk": "^1.16.0",
+    "agents": "^0.22.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "@cloudflare/workers-types": "^4.20250813.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^4.30.0"
   }
 }
